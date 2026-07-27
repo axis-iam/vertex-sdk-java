@@ -1,0 +1,2 @@
+package com.chaosguide.iam.vertex.portal;
+public record OpenUserRoleAssignment(String id, String userId, String roleId, String organizationId, String conditionExpression, String conditionDescription, long version, String createdAt, String updatedAt, String etag) { public OpenUserRoleAssignment withEtag(String value) { return new OpenUserRoleAssignment(id,userId,roleId,organizationId,conditionExpression,conditionDescription,version,createdAt,updatedAt,value); } }

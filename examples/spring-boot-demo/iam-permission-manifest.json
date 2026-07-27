@@ -1,0 +1,8 @@
+{
+  "manifestId": "spring-boot-demo",
+  "revision": "1",
+  "permissions": [
+    {"resource": "posts", "action": "read", "name": "Read blog posts", "description": null},
+    {"resource": "posts", "action": "write", "name": "Write blog posts", "description": null}
+  ]
+}

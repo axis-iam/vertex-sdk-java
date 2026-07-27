@@ -1,0 +1,38 @@
+# Build
+build/
+.gradle/
+out/
+**/bin/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Logs
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven publishing artifacts
+target/
+
+# Local agent and coordination material (kept on disk, excluded from public source)
+/.private-history/
+/.claude/
+/.codex/
+/AGENTS.md
+/CLAUDE.md
+/docs/PROJECT_TASKS.md
+/docs/tasks/
+/docs/plans/
+/docs/guides/

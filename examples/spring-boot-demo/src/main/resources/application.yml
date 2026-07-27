@@ -1,0 +1,25 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: spring-boot-demo
+  config:
+    import: optional:file:.env[.properties]
+
+iam:
+  sdk:
+    endpoint: ${IAM_ENDPOINT:http://localhost:30001}
+    client-id: ${IAM_CLIENT_ID}
+    client-secret: ${IAM_CLIENT_SECRET}
+    jwks-refresh: PT1H
+    permission-cache-ttl: PT5M
+    permission-cache-max-size: 10000
+    portal-api-endpoint: ${IAM_PORTAL_ENDPOINT:http://localhost:30002}
+    resolve-mode: ON_DEMAND
+    fail-mode: CLOSE
+    http-timeout: PT10S
+
+logging:
+  level:
+    com.chaosguide.iam.vertex: INFO
