@@ -19,8 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.time.Duration;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -165,8 +163,7 @@ class IamClientTest {
 
     @Test
     void exhaustsSharedPermissionCompatibilityRejectVectors() throws Exception {
-        JsonNode fixture = new ObjectMapper().readTree(Files.readString(
-                Path.of("../../docs/fixtures/permission-compatibility-vectors.json")));
+        JsonNode fixture = compatibilityFixture();
         for (JsonNode vector : fixture.path("snapshot").path("reject")) {
             server.enqueue(new MockResponse().setBody(vector.path("body").toString()));
             assertThatThrownBy(() -> client.listPermissions("orders-service", null))
@@ -189,8 +186,7 @@ class IamClientTest {
 
     @Test
     void acceptsSharedCanonicalSnapshotWithWildcardGrants() throws Exception {
-        JsonNode fixture = new ObjectMapper().readTree(Files.readString(
-                Path.of("../../docs/fixtures/permission-compatibility-vectors.json")));
+        JsonNode fixture = compatibilityFixture();
         server.enqueue(new MockResponse().setBody(fixture.path("snapshot").path("valid").toString()));
 
         PermissionListResponse response = client.listPermissions("orders-service", null);
@@ -203,8 +199,7 @@ class IamClientTest {
 
     @Test
     void acceptsSharedResolveResponseWithWildcardGrants() throws Exception {
-        JsonNode fixture = new ObjectMapper().readTree(Files.readString(
-                Path.of("../../docs/fixtures/permission-compatibility-vectors.json")));
+        JsonNode fixture = compatibilityFixture();
         server.enqueue(new MockResponse().setBody(fixture.path("resolve").path("valid").toString()));
 
         assertThat(client.resolvePermissions(new ResolveRequest("orders-service", Set.of("admin"))).permissions())
@@ -219,6 +214,13 @@ class IamClientTest {
 
         assertThat(resp.permissions()).isEmpty();
         assertThat(resp.etag()).isEqualTo("\"abc\"");
+    }
+
+    private static JsonNode compatibilityFixture() throws Exception {
+        try (var input = IamClientTest.class.getResourceAsStream("/permission-compatibility-vectors.json")) {
+            if (input == null) throw new IllegalStateException("missing permission compatibility vectors");
+            return new ObjectMapper().readTree(input);
+        }
     }
 
     @Test

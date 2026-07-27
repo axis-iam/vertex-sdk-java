@@ -10,8 +10,6 @@ import okhttp3.mockwebserver.MockWebServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -175,7 +173,10 @@ class PermissionManifestClientTest {
     }
 
     private static com.fasterxml.jackson.databind.JsonNode sharedFixture() throws Exception {
-        return new ObjectMapper().readTree(Files.readString(Path.of("../../docs/fixtures/permission-manifest-vectors.json")));
+        try (var input = PermissionManifestClientTest.class.getResourceAsStream("/permission-manifest-vectors.json")) {
+            if (input == null) throw new IllegalStateException("missing permission manifest vectors");
+            return new ObjectMapper().readTree(input);
+        }
     }
 
     private static void assertLocalReject(String name) {

@@ -58,8 +58,7 @@ class IamUploadPermissionsTaskTest {
 
     @Test
     void consumesEverySharedStructuredFileVector() throws Exception {
-        var fixture = new ObjectMapper().readTree(Files.readString(
-                Path.of("../../docs/fixtures/permission-manifest-vectors.json")));
+        var fixture = sharedManifestVectors();
         for (var vector : fixture.path("manifestFiles").path("accept")) {
             Path file = tempDir.resolve(vector.path("name").textValue() + ".json");
             Files.writeString(file, vector.path("json").textValue());
@@ -80,5 +79,12 @@ class IamUploadPermissionsTaskTest {
     private static IamUploadPermissionsTask task() {
         Project project = ProjectBuilder.builder().build();
         return project.getTasks().create("uploadUnderTest", IamUploadPermissionsTask.class);
+    }
+
+    private static com.fasterxml.jackson.databind.JsonNode sharedManifestVectors() throws Exception {
+        try (var input = IamUploadPermissionsTaskTest.class.getResourceAsStream("/permission-manifest-vectors.json")) {
+            if (input == null) throw new IllegalStateException("missing permission manifest vectors");
+            return new ObjectMapper().readTree(input);
+        }
     }
 }

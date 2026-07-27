@@ -11,8 +11,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -81,8 +79,7 @@ class IamContextTest {
 
     @Test
     void consumesSharedWildcardVectors() throws Exception {
-        var fixture = new ObjectMapper().readTree(Files.readString(
-                Path.of("../../docs/fixtures/permission-manifest-vectors.json")));
+        var fixture = sharedManifestVectors();
         for (var vector : fixture.path("codeGeneration").path("wildcardMatch")) {
             String[] target = vector.path("target").textValue().split(":", -1);
             var user = new IamCurrentUser(
@@ -91,6 +88,13 @@ class IamContextTest {
             assertThat(user.hasPermission(target[0], target[1]))
                     .as(vector.path("granted").textValue() + " -> " + vector.path("target").textValue())
                     .isEqualTo(vector.path("matches").booleanValue());
+        }
+    }
+
+    private static com.fasterxml.jackson.databind.JsonNode sharedManifestVectors() throws Exception {
+        try (var input = IamContextTest.class.getResourceAsStream("/permission-manifest-vectors.json")) {
+            if (input == null) throw new IllegalStateException("missing permission manifest vectors");
+            return new ObjectMapper().readTree(input);
         }
     }
 }
