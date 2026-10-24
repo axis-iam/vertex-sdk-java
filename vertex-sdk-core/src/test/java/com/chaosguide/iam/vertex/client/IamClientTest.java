@@ -276,6 +276,23 @@ class IamClientTest {
     }
 
     @Test
+    void identityProfileWriteRetiresUsernameAndPreservesNullEmail() throws Exception {
+        server.enqueue(new MockResponse().setHeader("Content-Type", "application/json")
+                .setBody("{\"userId\":\"u1\",\"email\":null,\"username\":null,\"emailVerified\":false}"));
+        var result = client.updateAccountProfile("user-token",
+                new com.chaosguide.iam.vertex.client.dto.AccountUpdateProfileRequest("Display", null));
+        assertThat(result.email()).isNull();
+        assertThat(result.username()).isNull();
+        assertThat(result.emailVerified()).isFalse();
+        var request = server.takeRequest();
+        assertThat(request.getMethod()).isEqualTo("PATCH");
+        assertThat(request.getPath()).isEqualTo("/api/v1/auth/me/profile");
+        var body = new ObjectMapper().readTree(request.getBody().readUtf8());
+        assertThat(body.has("username")).isFalse();
+        assertThat(body.get("displayName").asText()).isEqualTo("Display");
+    }
+
+    @Test
     void accountOrgAndInvitationHelpersUseBearerOrPublicContracts() throws Exception {
         server.enqueue(new MockResponse()
                 .setHeader("Content-Type", "application/json")
@@ -353,7 +370,7 @@ class IamClientTest {
         assertThat(client.listAccountSessions("user-token").get(0).current()).isTrue();
         client.revokeAccountSession("user-token", "sid-current");
         client.revokeOtherAccountSessions("user-token");
-        client.logoutAccount("user-token", "refresh-token");
+        client.logoutAccount("user-token");
         assertThat(client.getAccountPermissionSummary("user-token", "org-1").permissions()).contains("orders:read");
         assertThat(client.checkAccountPermission(
                 "user-token", new PermissionCheckRequest("orders:write", "org-1")).allowed()).isTrue();
@@ -393,7 +410,7 @@ class IamClientTest {
 
         RecordedRequest logout = server.takeRequest();
         assertThat(logout.getPath()).isEqualTo("/api/v1/auth/logout");
-        assertThat(logout.getBody().readUtf8()).contains("\"refresh_token\":\"refresh-token\"");
+        assertThat(logout.getBody().readUtf8()).isEmpty();
 
         RecordedRequest summary = server.takeRequest();
         assertThat(summary.getPath()).isEqualTo("/api/v1/auth/me/permissions?organizationId=org-1");

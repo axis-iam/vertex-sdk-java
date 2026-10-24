@@ -16,6 +16,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+throw "Retired Direct-login provisioning runner. Use phase1-paired-example-smoke.ps1 with an explicitly obtained OAuth AccessToken; no live provisioning will run."
+
 if ([string]::IsNullOrWhiteSpace($AdminPassword)) {
     throw "Set IAM_E2E_ADMIN_PASSWORD to the local Portal developer password before running live provisioning."
 }
@@ -260,14 +262,6 @@ function Poll-PostPermissions {
     throw "posts:read/posts:write permissions were not visible through Portal after Spring startup"
 }
 
-function Invoke-DirectLogin {
-    param([string] $ClientId, [string] $Email, [string] $Password)
-    Invoke-Api -Method Post -Uri "$IamServer/api/v1/auth/login" -Body @{
-        identifier = $Email
-        password = $Password
-        client_id = $ClientId
-    }
-}
 
 function Invoke-PhaseSmoke {
     param([string] $Token = $null)
@@ -622,14 +616,7 @@ try {
         $Report.checks[$item.name] = @{ status = $response.status }
     }
 
-    $portalLogin = Invoke-Api -Method Post -Uri "$IamServer/api/v1/auth/login" -Body @{
-        identifier = $AdminEmail
-        password = $AdminPassword
-        client_id = $PortalClientId
-    }
-    Assert-Status $portalLogin @(200) "Portal login"
-    $portalToken = $portalLogin.body.access_token
-    $Report.checks.portalLogin = @{ status = 200; token = "<redacted>" }
+    throw "This provisioning runner is retired pending unified OAuth fixture admission; use the manual-token phase1-paired-example-smoke.ps1 runner."
 
     $app = Invoke-Api -Method Post -Uri "$IamPortal/portal/v1/apps" -Token $portalToken -Body @{
         name = "phase1-live-paired-example-e2e-$RunId"
@@ -726,14 +713,7 @@ try {
 
     $Report.smoke.withoutToken = Invoke-PhaseSmoke
 
-    $login = Invoke-DirectLogin -ClientId $spaClient.clientId -Email $userEmail -Password $userPassword
-    if ($login.status -ne 200) {
-        $Report.smoke.spaDirectLoginStatus = $login.status
-        $login = Invoke-DirectLogin -ClientId $webClient.clientId -Email $userEmail -Password $userPassword
-    }
-    Assert-Status $login @(200) "Direct login for bearer smoke"
-    $accessToken = $login.body.access_token
-    Assert-Check ($accessToken -and $accessToken.Split(".").Count -eq 3) "Direct login did not return a JWT access token"
+    throw "Unified OAuth fixture admission is required before bearer smoke."
     $tokenHeader = Decode-JwtPart -Jwt $accessToken -Index 0
     $tokenClaims = Decode-JwtPart -Jwt $accessToken -Index 1
     $permissionsCheck = Invoke-Api -Method Get -Uri "$IamServer/api/v1/auth/me/permissions" -Headers @{

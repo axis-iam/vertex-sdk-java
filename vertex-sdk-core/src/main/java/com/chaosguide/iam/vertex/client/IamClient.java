@@ -163,6 +163,22 @@ public class IamClient {
         }
     }
 
+    /** Fetch the safe current-user authentication context. Never decode an access token for UI context. */
+    public com.chaosguide.iam.vertex.client.dto.CurrentUserResponse getCurrentUser(String accessToken) {
+        Request request = new Request.Builder().url(baseUrl + "/api/v1/auth/me").get()
+                .header("Authorization", "Bearer " + normalizeBearerToken(accessToken)).build();
+        try (Response response = http.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new com.chaosguide.iam.vertex.exception.CurrentUserException(response.code());
+            try {
+                return com.chaosguide.iam.vertex.client.dto.CurrentUserResponse.fromJson(readTree(response.body()));
+            } catch (IllegalArgumentException ex) {
+                throw new IamSdkException("Invalid current-user view", ex);
+            }
+        } catch (IOException ex) {
+            throw new IamSdkException("Current-user request failed", ex);
+        }
+    }
+
     /**
      * Fetches the current user's latest profile via {@code GET /api/v1/auth/me/profile}.
      *
@@ -324,13 +340,11 @@ public class IamClient {
     }
 
     /**
-     * Logs out the current token and optionally revokes the provided refresh token.
+     * Revokes the authenticated OAuth token and session.
      */
-    public void logoutAccount(String accessToken, String refreshToken) {
+    public void logoutAccount(String accessToken) {
         String token = normalizeBearerToken(accessToken);
-        RequestBody body = hasText(refreshToken)
-                ? RequestBody.create(writeJson(Map.of("refresh_token", refreshToken)), JSON)
-                : RequestBody.create(new byte[0], JSON);
+        RequestBody body = RequestBody.create(new byte[0], JSON);
         Request request =
                 new Request.Builder()
                         .url(baseUrl + "/api/v1/auth/logout")

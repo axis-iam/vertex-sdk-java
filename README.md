@@ -270,7 +270,7 @@ Do not use the IAM Developer Portal registration endpoint from SDK code. `POST /
 | `iam.sdk.permission-cache-ttl` | `PT5M` | Local role-set permission cache TTL. |
 | `iam.sdk.permission-cache-max-size` | `10000` | Max Caffeine cache entries. |
 | `iam.sdk.user-profile-cache-enabled` | `true` | Enables cache for explicit current-user profile lookups. |
-| `iam.sdk.user-profile-cache-ttl` | `PT1M` | Local `/api/v1/auth/me` profile cache TTL. |
+| `iam.sdk.user-profile-cache-ttl` | `PT1M` | Local `/api/v1/auth/me/profile` profile cache TTL. |
 | `iam.sdk.user-profile-cache-max-size` | `10000` | Max profile cache entries. |
 | `iam.sdk.fail-mode` | `CLOSE` | On resolve failure, `CLOSE` fails the request; `OPEN` returns no permissions. |
 | `iam.sdk.http-timeout` | `PT10S` | IAM HTTP connect/read/write timeout. |
@@ -305,3 +305,22 @@ Published modules:
 - `com.chaosguide.iam:vertex-sdk-test`
 
 Maven Central and GitHub Packages repository blocks are prepared in `buildSrc/src/main/kotlin/iam-publish.gradle.kts`, but credentials must be supplied outside the repository.
+
+## Safe current-user context
+
+Call `client.getCurrentUser(accessToken)` explicitly with a user bearer to read
+`GET /api/v1/auth/me`. This API returns identity and `authenticationContext`,
+including Application/client/session bindings, nullable Workspace/Organization,
+selection requirement, authentication time/methods, assurance and impersonation.
+Null email, an unselected Workspace and empty method lists are valid. Missing
+required bindings, omitted nullable fields and malformed context are errors.
+Metadata is display data, never an authorization source. This call sends only
+the bearer, without a client secret, and does not decode token bytes or alter
+request-local JWT verification. HTTP 401/403/dependency failures propagate as
+errors; no anonymous or empty-user success is synthesized.
+
+The existing profile methods continue to read `/api/v1/auth/me/profile`; use the
+new current-user method for the explicit safe authentication context. No unified
+BFF/transaction transport or new machine authorization API is implied.
+
+Current-account logout revokes the authenticated OAuth token/session using only the Access Token. No Direct refresh-token body or Direct login/refresh fallback is supported.

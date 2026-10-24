@@ -16,6 +16,8 @@ import java.util.Set;
  * integrations should prefer the account-center fields such as {@link #userId()}, {@link
  * #applicationId()}, and {@link #currentOrganization()}.
  *
+ * @param email nullable primary EMAIL projection; users without email are valid
+ * @param username nullable primary USERNAME projection
  * @param metadata legacy profile metadata, when returned by older IAM servers
  */
 public record UserProfileResponse(
