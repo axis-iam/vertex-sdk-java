@@ -154,13 +154,54 @@ public class PortalOpenApiClient {
     }
 
     /** Create an EMAIL_LINK or ACCESS_CODE registration grant and return its one-time proof. */
-    public CreatedRegistrationGrant createRegistrationGrant(CreateRegistrationGrantRequest request) {
+    public CreatedRegistrationGrant createRegistrationGrant(CreateRegistrationGrantRequest request, String idempotencyKey) {
         if (request == null) {
             throw invalidRegistrationGrantResponse();
         }
         JsonNode response = requestJsonWithScope("POST", "/open/v1/registration-grants", request,
-                JsonNode.class, Map.of(), REGISTRATION_GRANTS_WRITE_SCOPE);
+                JsonNode.class, registrationCommandHeaders(idempotencyKey), REGISTRATION_GRANTS_WRITE_SCOPE);
         return parseRegistrationGrantResponse(response, CreatedRegistrationGrant.class);
+    }
+
+    /** Rotate using the last observed version; an ambiguous response is not retried automatically. */
+    public CreatedRegistrationGrant rotateRegistrationGrant(String grantId, long expectedVersion, String idempotencyKey) {
+        if (expectedVersion < 0) throw invalidRegistrationGrantResponse();
+        JsonNode response = requestJsonWithScope("POST", registrationGrantPath(grantId) + "/rotate",
+                Map.of("expectedVersion", expectedVersion), JsonNode.class,
+                registrationCommandHeaders(idempotencyKey), REGISTRATION_GRANTS_WRITE_SCOPE);
+        CreatedRegistrationGrant created = parseRegistrationGrantResponse(response, CreatedRegistrationGrant.class);
+        if (!grantId.equals(created.grant().id())) throw invalidRegistrationGrantResponse();
+        return created;
+    }
+
+    /** Queue one explicitly addressed delivery using registration_grants:write. */
+    public RegistrationGrantDelivery deliverRegistrationGrant(
+            String grantId, RegistrationGrantDeliveryRequest request, String idempotencyKey) {
+        if (request == null) throw invalidRegistrationGrantResponse();
+        JsonNode response = requestJsonWithScope("POST", registrationGrantPath(grantId) + "/deliveries",
+                request, JsonNode.class, registrationCommandHeaders(idempotencyKey), REGISTRATION_GRANTS_WRITE_SCOPE);
+        RegistrationGrantDelivery delivery = parseRegistrationGrantResponse(response, RegistrationGrantDelivery.class);
+        if (!grantId.equals(delivery.grantId()) || delivery.variant() != request.variant()
+                || delivery.status() == null) throw invalidRegistrationGrantResponse();
+        return delivery;
+    }
+
+    /** Query authoritative delivery status using registration_grants:read. */
+    public RegistrationGrantDelivery getRegistrationGrantDelivery(String grantId, String deliveryId) {
+        registrationGrantPath(deliveryId);
+        JsonNode response = requestJsonWithScope("GET", registrationGrantPath(grantId) + "/deliveries/" + deliveryId,
+                null, JsonNode.class, Map.of(), REGISTRATION_GRANTS_READ_SCOPE);
+        RegistrationGrantDelivery delivery = parseRegistrationGrantResponse(response, RegistrationGrantDelivery.class);
+        if (!grantId.equals(delivery.grantId()) || !deliveryId.equals(delivery.id())
+                || delivery.variant() == null || delivery.status() == null) throw invalidRegistrationGrantResponse();
+        return delivery;
+    }
+
+    private static Map<String, String> registrationCommandHeaders(String key) {
+        if (key == null || key.isBlank() || key.length() > 200 || key.chars().anyMatch(Character::isISOControl)) {
+            throw new PortalOpenApiConfigException("Idempotency-Key must contain 1 to 200 printable characters");
+        }
+        return Map.of("Idempotency-Key", key);
     }
 
     /** Return a safe registration-grant detail without any raw proof fields. */

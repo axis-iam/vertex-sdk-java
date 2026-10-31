@@ -264,7 +264,6 @@ class IamClientTest {
 
         UserProfileResponse resp = client.getMe("Bearer user-token");
 
-        assertThat(resp.id()).isEqualTo("user-1");
         assertThat(resp.userId()).isEqualTo("user-1");
         assertThat(resp.applicationId()).isEqualTo("app-1");
         assertThat(resp.username()).isEqualTo("alice");

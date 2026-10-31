@@ -1,6 +1,7 @@
 package com.chaosguide.iam.vertex.client;
 
 import com.chaosguide.iam.vertex.client.dto.AccountOrganizationResponse;
+import com.chaosguide.iam.vertex.client.dto.AccountSecurityOperations.*;
 import com.chaosguide.iam.vertex.client.dto.AccountPermissionSummaryResponse;
 import com.chaosguide.iam.vertex.client.dto.AccountSecuritySummaryResponse;
 import com.chaosguide.iam.vertex.client.dto.AccountUpdateProfileRequest;
@@ -452,6 +453,349 @@ public class IamClient {
             request.header("Authorization", "Bearer " + normalizeBearerToken(accessToken));
         }
         return executeJson(request.build(), PublicOrganizationInvitationAcceptResponse.class, "acceptOrganizationInvitation");
+    }
+
+    /** GET /api/v1/auth/me/identifiers. No implicit mutation replay. */
+    public AccountIdentifiers listAccountIdentifiers(String accessToken) {
+        return securityRequest(accessToken, "GET", "/api/v1/auth/me/identifiers", null, null,
+                new TypeReference<AccountIdentifiers>() {});
+    }
+    /** GET /api/v1/auth/me/login-methods. No implicit mutation replay. */
+    public AccountLoginMethods listAccountLoginMethods(String accessToken) {
+        return securityRequest(accessToken, "GET", "/api/v1/auth/me/login-methods", null, null,
+                new TypeReference<AccountLoginMethods>() {});
+    }
+    /** GET /api/v1/auth/me/linkable-identity-providers. No implicit mutation replay. */
+    public List<LinkableIdentityProvider> listLinkableIdentityProviders(String accessToken) {
+        return securityRequest(accessToken, "GET", "/api/v1/auth/me/linkable-identity-providers",
+                null, null, new TypeReference<List<LinkableIdentityProvider>>() {});
+    }
+    /** POST /api/v1/auth/me/identity-operations. No implicit mutation replay. */
+    public IdentityOperation createIdentityOperation(
+            String accessToken, IdentityOperationCreate request, String idempotencyKey) {
+        return securityRequest(accessToken, "POST", "/api/v1/auth/me/identity-operations",
+                SecurityWireCodec.encode(request), SecurityWireCodec.key(idempotencyKey),
+                new TypeReference<IdentityOperation>() {});
+    }
+    /** GET /api/v1/auth/me/identity-operations/{id}. No implicit mutation replay. */
+    public IdentityOperation getIdentityOperation(String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "GET",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId) + "",
+                null, null, new TypeReference<IdentityOperation>() {});
+    }
+    /** GET /api/v1/auth/me/identity-operations/transfers. No implicit mutation replay. */
+    public List<IdentityOperation> listIdentityTransfers(String accessToken) {
+        return securityRequest(accessToken, "GET", "/api/v1/auth/me/identity-operations/transfers",
+                null, null, new TypeReference<List<IdentityOperation>>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/reauthenticate. No implicit mutation replay.
+     */
+    public IdentityOperation reauthenticateIdentityOperation(
+            String accessToken, java.util.UUID operationId, Reauthentication request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/reauthenticate",
+                SecurityWireCodec.encode(request), null, new TypeReference<IdentityOperation>() {});
+    }
+    /** POST /api/v1/auth/me/identity-operations/{id}/challenges. No implicit mutation replay. */
+    public IdentityOperation challengeIdentityOperation(
+            String accessToken, java.util.UUID operationId, TargetProofMethod targetProofMethod) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/challenges",
+                Map.of("targetProofMethod", java.util.Objects.requireNonNull(targetProofMethod)),
+                null, new TypeReference<IdentityOperation>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/current-account/challenges. No implicit
+     * mutation replay.
+     */
+    public IdentityChallengeResult challengeIdentityCurrentAccount(
+            String accessToken, java.util.UUID operationId, java.util.UUID identifierId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/current-account/challenges",
+                Map.of("identifierId", SecurityWireCodec.id(identifierId)), null,
+                new TypeReference<IdentityChallengeResult>() {});
+    }
+    /** POST /api/v1/auth/me/identity-operations/{id}/complete. No implicit mutation replay. */
+    public IdentityOperation completeIdentityOperation(
+            String accessToken, java.util.UUID operationId, IdentityOperationComplete request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/complete",
+                SecurityWireCodec.encode(request), null, new TypeReference<IdentityOperation>() {});
+    }
+    /** POST /api/v1/auth/me/identity-operations/{id}/cancel. No implicit mutation replay. */
+    public IdentityOperation cancelIdentityOperation(
+            String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/cancel",
+                Map.of(), null, new TypeReference<IdentityOperation>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/confirm-transfer. No implicit mutation replay.
+     */
+    public IdentityOperation confirmIdentityTransfer(
+            String accessToken, java.util.UUID operationId, TransferDecision decision) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/confirm-transfer",
+                Map.of("decision", java.util.Objects.requireNonNull(decision)), null,
+                new TypeReference<IdentityOperation>() {});
+    }
+    /** POST /api/v1/auth/me/identity-operations/{id}/authorize. No implicit mutation replay. */
+    public ProviderAuthorization authorizeIdentityOperation(
+            String accessToken, java.util.UUID operationId, IdentityProviderAuthorize request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/authorize",
+                SecurityWireCodec.encode(request), null,
+                new TypeReference<ProviderAuthorization>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/provider-callback. No implicit mutation
+     * replay.
+     */
+    public IdentityOperation completeIdentityProviderAuthorization(
+            String accessToken, java.util.UUID operationId, ProviderExchange request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/provider-callback",
+                SecurityWireCodec.encode(request), null, new TypeReference<IdentityOperation>() {});
+    }
+    /** GET /api/v1/auth/mfa/capabilities. No implicit mutation replay. */
+    /** Read the current unused recovery-code count for the explicit current-user bearer. */
+    public RecoveryCodesRemaining getRecoveryCodesRemaining(String accessToken) {
+        return securityRequest(accessToken, "GET", "/api/v1/auth/mfa/recovery-codes/remaining",
+            null, null, new TypeReference<RecoveryCodesRemaining>() {});
+    }
+
+    public MfaCapabilities getMfaCapabilities(String accessToken) {
+        return securityRequest(accessToken, "GET", "/api/v1/auth/mfa/capabilities", null, null,
+                new TypeReference<MfaCapabilities>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations. No implicit mutation replay. */
+    public MfaOperation createMfaOperation(
+            String accessToken, MfaOperationCreate request, String idempotencyKey) {
+        return securityRequest(accessToken, "POST", "/api/v1/auth/mfa/operations",
+                SecurityWireCodec.encode(request), SecurityWireCodec.key(idempotencyKey),
+                new TypeReference<MfaOperation>() {});
+    }
+    /** GET /api/v1/auth/mfa/operations/{id}. No implicit mutation replay. */
+    public MfaOperation getMfaOperation(String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "GET",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId) + "", null, null,
+                new TypeReference<MfaOperation>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/reauthenticate. No implicit mutation replay. */
+    public MfaOperation reauthenticateMfaOperation(
+            String accessToken, java.util.UUID operationId, Reauthentication request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId)
+                        + "/reauthenticate",
+                SecurityWireCodec.encode(request), null, new TypeReference<MfaOperation>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/challenges. No implicit mutation replay. */
+    public MfaChallengeResult challengeMfaOperation(
+            String accessToken, java.util.UUID operationId, java.util.UUID identifierId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId) + "/challenges",
+                Map.of("method", "EMAIL_OTP", "identifierId", SecurityWireCodec.id(identifierId)),
+                null, new TypeReference<MfaChallengeResult>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/authorize. No implicit mutation replay. */
+    public ProviderAuthorization authorizeMfaOperation(
+            String accessToken, java.util.UUID operationId, MfaProviderAuthorize request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId) + "/authorize",
+                SecurityWireCodec.encode(request), null,
+                new TypeReference<ProviderAuthorization>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/provider-callback. No implicit mutation replay. */
+    public MfaOperation completeMfaProviderAuthorization(
+            String accessToken, java.util.UUID operationId, ProviderExchange request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId)
+                        + "/provider-callback",
+                SecurityWireCodec.encode(request), null, new TypeReference<MfaOperation>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/begin. No implicit mutation replay. */
+    public TotpBeginResult beginTotpEnrollmentOperation(
+            String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId) + "/begin",
+                Map.of(), null, new TypeReference<TotpBeginResult>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/complete. No implicit mutation replay. */
+    public MfaCompletionResult completeMfaOperation(
+            String accessToken, java.util.UUID operationId, String code) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId) + "/complete",
+                code == null ? Map.of() : Map.of("code", SecurityWireCodec.code(code)), null,
+                new TypeReference<MfaCompletionResult>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/cancel. No implicit mutation replay. */
+    public MfaOperation cancelMfaOperation(String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId) + "/cancel",
+                Map.of(), null, new TypeReference<MfaOperation>() {});
+    }
+    /** POST /api/v1/auth/me/identity-operations/{id}/step-up/start. No implicit mutation replay. */
+    public OperationStepUpChallenge startIdentityOperationStepUp(
+            String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/start",
+                Map.of(), null, new TypeReference<OperationStepUpChallenge>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/step-up/verify. No implicit mutation replay.
+     */
+    public IdentityOperation verifyIdentityOperationStepUp(
+            String accessToken, java.util.UUID operationId, OperationStepUpVerify request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/verify",
+                SecurityWireCodec.encode(request), null, new TypeReference<IdentityOperation>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/step-up/webauthn/start. No implicit mutation
+     * replay.
+     */
+    public OperationWebAuthnStart startIdentityOperationWebAuthn(
+            String accessToken, java.util.UUID operationId, String challengeId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/webauthn/start",
+                Map.of("challengeId", SecurityWireCodec.text(challengeId)), null,
+                new TypeReference<OperationWebAuthnStart>() {});
+    }
+    /**
+     * POST /api/v1/auth/me/identity-operations/{id}/step-up/webauthn/verify. No implicit mutation
+     * replay.
+     */
+    public IdentityOperation verifyIdentityOperationWebAuthn(
+            String accessToken, java.util.UUID operationId, OperationWebAuthnVerify request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/me/identity-operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/webauthn/verify",
+                SecurityWireCodec.encode(request), null, new TypeReference<IdentityOperation>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/step-up/start. No implicit mutation replay. */
+    public OperationStepUpChallenge startMfaOperationStepUp(
+            String accessToken, java.util.UUID operationId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/start",
+                Map.of(), null, new TypeReference<OperationStepUpChallenge>() {});
+    }
+    /** POST /api/v1/auth/mfa/operations/{id}/step-up/verify. No implicit mutation replay. */
+    public MfaOperation verifyMfaOperationStepUp(
+            String accessToken, java.util.UUID operationId, OperationStepUpVerify request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/verify",
+                SecurityWireCodec.encode(request), null, new TypeReference<MfaOperation>() {});
+    }
+    /**
+     * POST /api/v1/auth/mfa/operations/{id}/step-up/webauthn/start. No implicit mutation replay.
+     */
+    public OperationWebAuthnStart startMfaOperationWebAuthn(
+            String accessToken, java.util.UUID operationId, String challengeId) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/webauthn/start",
+                Map.of("challengeId", SecurityWireCodec.text(challengeId)), null,
+                new TypeReference<OperationWebAuthnStart>() {});
+    }
+    /**
+     * POST /api/v1/auth/mfa/operations/{id}/step-up/webauthn/verify. No implicit mutation replay.
+     */
+    public MfaOperation verifyMfaOperationWebAuthn(
+            String accessToken, java.util.UUID operationId, OperationWebAuthnVerify request) {
+        return securityRequest(accessToken, "POST",
+                "/api/v1/auth/mfa/operations/" + SecurityWireCodec.id(operationId)
+                        + "/step-up/webauthn/verify",
+                SecurityWireCodec.encode(request), null, new TypeReference<MfaOperation>() {});
+    }
+    private <T> T securityRequest(String accessToken, String method, String path, Object body,
+            String key, TypeReference<T> type) {
+        if (Thread.currentThread().isInterrupted())
+            throw new com.chaosguide.iam.vertex.exception.AccountSecurityTransportException(false);
+        String token = SecurityWireCodec.token(accessToken);
+        Request.Builder builder = new Request.Builder()
+                                          .url(baseUrl + path)
+                                          .header("Authorization", "Bearer " + token)
+                                          .header("Accept", "application/json");
+        if (key != null)
+            builder.header("Idempotency-Key", key);
+        if (method.equals("GET"))
+            builder.get();
+        else {
+            byte[] payload = writeJson(body);
+            builder.post(new RequestBody() {
+                @Override
+                public MediaType contentType() {
+                    return JSON;
+                }
+                @Override
+                public long contentLength() {
+                    return payload.length;
+                }
+                @Override
+                public boolean isOneShot() {
+                    return true;
+                }
+                @Override
+                public void writeTo(okio.BufferedSink sink) throws IOException {
+                    sink.write(payload);
+                }
+            });
+        }
+        // OkHttp's connection recovery must not replay once-only material or unknown mutations.
+        java.util.concurrent.atomic.AtomicReference<String> originalRetryAfter =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        OkHttpClient scoped =
+                http.newBuilder()
+                        .retryOnConnectionFailure(method.equals("GET"))
+                        .followRedirects(false)
+                        .followSslRedirects(false)
+                        .cache(null)
+                        .authenticator(okhttp3.Authenticator.NONE)
+                        .proxyAuthenticator(okhttp3.Authenticator.NONE)
+                        .addNetworkInterceptor(chain -> {
+                            Response received = chain.proceed(chain.request());
+                            originalRetryAfter.set(received.header("Retry-After"));
+                            // Keep the wire value for our strict parser, but disable OkHttp's
+                            // built-in 503 follow-up (including its unbounded integer parsing).
+                            return received.code() == 503
+                                    ? received.newBuilder().removeHeader("Retry-After").build()
+                                    : received;
+                        })
+                        .build();
+        try (Response response = scoped.newCall(builder.build()).execute()) {
+            if (response.body() == null)
+                throw new com.chaosguide.iam.vertex.exception.AccountSecurityProtocolException();
+            byte[] raw;
+            var source = response.body().source();
+            source.request(1048577L);
+            if (source.buffer().size() > 1048576L)
+                throw new com.chaosguide.iam.vertex.exception.AccountSecurityProtocolException();
+            raw = source.readByteArray();
+            if (!response.isSuccessful())
+                throw SecurityWireCodec.error(
+                        mapper, response.code(), raw, originalRetryAfter.get());
+            return SecurityWireCodec.decode(mapper, raw, type);
+        } catch (IOException ex) {
+            if (ex instanceof java.io.InterruptedIOException
+                    && Thread.currentThread().isInterrupted())
+                Thread.currentThread().interrupt();
+            throw new com.chaosguide.iam.vertex.exception.AccountSecurityTransportException(
+                    !method.equals("GET"));
+        }
     }
 
     private byte[] writeJson(Object value) {

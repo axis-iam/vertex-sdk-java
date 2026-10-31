@@ -84,13 +84,12 @@ class IamUserProfileServiceTest {
                 .setBody(
                         """
                         {
-                          "id":"user-1",
+                          "userId":"user-1",
+                          "applicationId":"app-1",
                           "email":"user@example.com",
                           "username":"%s",
                           "status":"ACTIVE",
-                          "emailVerified":true,
-                          "roles":["admin"],
-                          "metadata":{}
+                          "emailVerified":true
                         }
                         """
                                 .formatted(username));

@@ -190,10 +190,25 @@ Registration Grant helpers are server-only and require the exact `registration_g
 
 ```java
 CreatedRegistrationGrant created = portal.createRegistrationGrant(new CreateRegistrationGrantRequest(
-        CreateRegistrationGrantType.ACCESS_CODE, null, null, "example.test", null, null));
-if (created.registrationAccessCode() == null) throw new IllegalStateException("missing one-time proof");
-// Consume immediately. Never log, cache, or persist the proof.
+        CreateRegistrationGrantType.EMAIL_LINK, null, null, "example.test", null, null), createKey);
+if (!created.secretAlreadyIssued()) {
+    // Present registrationInvitationUrl() once through your protected management UI.
+    // Never log or persist the URL, token, or access code.
+}
+RegistrationGrantDelivery delivery = portal.deliverRegistrationGrant(created.grant().id(),
+        new RegistrationGrantDeliveryRequest("member@example.test", "en",
+                RegistrationGrantDeliveryRequest.Variant.LINK), deliveryKey);
+RegistrationGrantDelivery status = portal.getRegistrationGrantDelivery(created.grant().id(), delivery.id());
+CreatedRegistrationGrant rotated = portal.rotateRegistrationGrant(
+        created.grant().id(), created.grant().version(), rotationKey);
 ```
+
+Supply a stable, nonblank `Idempotency-Key` (at most 200 characters, no control characters)
+for each create, delivery, or rotation command. Reuse it only to recover the same command;
+the SDK does not automatically retry mutations. A replay sets `secretAlreadyIssued` and returns
+no URL, token, or access code. Rotation uses the last observed grant version. `LINK` delivers
+an `EMAIL_LINK` grant and `CODE` delivers an `ACCESS_CODE` grant. Delivery/status responses
+contain no invitation credentials. Sending and opening an invitation do not consume a registration use.
 
 ## Current User And Profile
 
@@ -252,7 +267,7 @@ PublicOrganizationInvitationAcceptResponse accepted =
 
 Do not persist raw invitation tokens in durable state. Keep them URL/request scoped.
 
-`UserProfileResponse.metadata()` is legacy profile metadata when returned by IAM. It is not App User authorization attributes. App User authorization attributes are app-scoped management-plane fields shown/edited in Portal/Admin App User detail and may be used by IAM policy, ABAC, or token-claim generation. This Java SDK does not add a Portal/Admin App User management client in this scope, and runtime authorization checks continue to use JWT identity plus resolved permissions, never profile metadata or a cached profile.
+`UserProfileResponse` mirrors the current `/api/v1/auth/me/profile` response; it exposes `userId()` and nullable profile fields, not `id()`, `roles()` or `metadata()`. Roles and permissions are available from `getAccountPermissionSummary`. Profile data is not an authorization source; runtime authorization continues to use verified JWT identity and resolved permissions.
 
 ## Signup Boundary
 
@@ -324,3 +339,15 @@ new current-user method for the explicit safe authentication context. No unified
 BFF/transaction transport or new machine authorization API is implied.
 
 Current-account logout revokes the authenticated OAuth token/session using only the Access Token. No Direct refresh-token body or Direct login/refresh fallback is supported.
+
+## Headless Account Security
+
+Typed current-user identifier, login-method, identity-operation and MFA-operation APIs are
+available through the existing public client. See [the headless operation guide](docs/account-security.md)
+for the full method/route map, explicit proof execution, one-time material delivery, typed errors,
+idempotent creation and lost-response recovery. These are not M2M administration or browser OAuth helpers.
+
+The headless account-security guide also covers authenticated identifier-management capabilities
+and the nullable, adapter-returned LINK target presentation; neither triggers browser orchestration.
+
+The account-security guide includes the typed live recovery-code remainder read (not generation-time count).

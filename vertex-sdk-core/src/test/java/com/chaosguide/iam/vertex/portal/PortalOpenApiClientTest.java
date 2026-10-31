@@ -197,7 +197,7 @@ class PortalOpenApiClientTest {
 
         client.listRegistrationGrants(null);
         assertThatThrownBy(() -> client.createRegistrationGrant(new CreateRegistrationGrantRequest(
-                        CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null)))
+                        CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null), "r11-create-key"))
                 .isInstanceOf(PortalOpenApiException.class)
                 .satisfies(error -> assertThat(((PortalOpenApiException) error).getCode())
                         .isEqualTo("invalid_registration_grant_response"));
@@ -230,10 +230,10 @@ class PortalOpenApiClientTest {
     void registrationGrantCreateEmailLinkAcceptsNullAccessCode() throws Exception {
         enqueueToken("grant-write", PortalOpenApiClient.REGISTRATION_GRANTS_WRITE_SCOPE, 120);
         enqueueJson("{\"grant\":" + grantJson("EMAIL_LINK")
-                + ",\"registrationGrantToken\":\"fake-one-time-proof\",\"registrationAccessCode\":null}");
+                + ",\"registrationInvitationUrl\":\"https://issuer.example.test/invitation?token=fake-one-time-proof\",\"secretAlreadyIssued\":false,\"registrationGrantToken\":\"fake-one-time-proof\",\"registrationAccessCode\":null}");
 
         CreatedRegistrationGrant created = client.createRegistrationGrant(new CreateRegistrationGrantRequest(
-                CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null));
+                CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null), "r11-create-key");
 
         assertThat(created.registrationGrantToken()).isEqualTo("fake-one-time-proof");
         assertThat(created.registrationAccessCode()).isNull();
@@ -247,10 +247,10 @@ class PortalOpenApiClientTest {
     void registrationGrantCreateAccessCodeAcceptsNullToken() throws Exception {
         enqueueToken("grant-write", PortalOpenApiClient.REGISTRATION_GRANTS_WRITE_SCOPE, 120);
         enqueueJson("{\"grant\":" + grantJson("ACCESS_CODE")
-                + ",\"registrationGrantToken\":null,\"registrationAccessCode\":\"fake-one-time-proof\"}");
+                + ",\"registrationInvitationUrl\":null,\"secretAlreadyIssued\":false,\"registrationGrantToken\":null,\"registrationAccessCode\":\"fake-one-time-proof\"}");
 
         CreatedRegistrationGrant created = client.createRegistrationGrant(new CreateRegistrationGrantRequest(
-                CreateRegistrationGrantType.ACCESS_CODE, null, null, null, null, null));
+                CreateRegistrationGrantType.ACCESS_CODE, null, null, null, null, null), "r11-create-key");
 
         assertThat(created.registrationGrantToken()).isNull();
         assertThat(created.registrationAccessCode()).isEqualTo("fake-one-time-proof");
@@ -682,11 +682,112 @@ class PortalOpenApiClientTest {
                 .setBody(body));
     }
 
-    private void assertInvalidCreate(String response) {
+    @Test
+    void registrationInvitationCreateDeliveryRotateReplayAndStatusUseExactScopesAndKeys() throws Exception {
+        String id = "019f4cca-88f8-7e77-a67d-4a6a2a68b803";
+        String deliveryId = "019f4cca-88f8-7e77-a67d-4a6a2a68b804";
         enqueueToken("grant-write", PortalOpenApiClient.REGISTRATION_GRANTS_WRITE_SCOPE, 120);
-        enqueueJson(response);
+        enqueueJson("{\"grant\":" + grantJson("EMAIL_LINK")
+                + ",\"registrationGrantToken\":\"fake-proof\",\"registrationAccessCode\":null,"
+                + "\"registrationInvitationUrl\":\"https://issuer.example.test/invitation?token=fake-proof\",\"secretAlreadyIssued\":false}");
+        enqueueJson(deliveryJson(id, deliveryId, "QUEUED"));
+        enqueueJson("{\"grant\":" + grantJson("EMAIL_LINK")
+                + ",\"registrationGrantToken\":null,\"registrationAccessCode\":null,\"registrationInvitationUrl\":null,\"secretAlreadyIssued\":true}");
+        enqueueToken("grant-read", PortalOpenApiClient.REGISTRATION_GRANTS_READ_SCOPE, 120);
+        enqueueJson(deliveryJson(id, deliveryId, "DELIVERED"));
+
+        var created = client.createRegistrationGrant(new CreateRegistrationGrantRequest(
+                CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null), "create-key");
+        assertThat(created.registrationInvitationUrl()).startsWith("https://issuer.example.test/invitation?");
+        assertThat(created.grant().version()).isZero();
+        var delivery = client.deliverRegistrationGrant(id,
+                new RegistrationGrantDeliveryRequest("member@example.test", "en", RegistrationGrantDeliveryRequest.Variant.LINK),
+                "delivery-key");
+        assertThat(delivery.status()).isEqualTo(RegistrationGrantDelivery.Status.QUEUED);
+        assertThat(client.rotateRegistrationGrant(id, 0, "rotate-key").secretAlreadyIssued()).isTrue();
+        assertThat(client.getRegistrationGrantDelivery(id, deliveryId).status()).isEqualTo(RegistrationGrantDelivery.Status.DELIVERED);
+        server.takeRequest();
+        RecordedRequest create = server.takeRequest();
+        assertThat(create.getHeader("Idempotency-Key")).isEqualTo("create-key");
+        RecordedRequest send = server.takeRequest();
+        assertThat(send.getPath()).isEqualTo("/open/v1/registration-grants/" + id + "/deliveries");
+        assertThat(send.getHeader("Idempotency-Key")).isEqualTo("delivery-key");
+        assertThat(new ObjectMapper().readTree(send.getBody().readUtf8()).path("variant").asText()).isEqualTo("LINK");
+        RecordedRequest rotate = server.takeRequest();
+        assertThat(rotate.getHeader("Idempotency-Key")).isEqualTo("rotate-key");
+        assertThat(rotate.getBody().readUtf8()).isEqualTo("{\"expectedVersion\":0}");
+        server.takeRequest();
+        assertResourceRequest(server.takeRequest(), "GET",
+                "/open/v1/registration-grants/" + id + "/deliveries/" + deliveryId, "Bearer grant-read");
+    }
+
+    @Test
+    void registrationInvitationRejectsInvalidKeysBeforeAcquiringAnyToken() {
+        var request = new CreateRegistrationGrantRequest(CreateRegistrationGrantType.ACCESS_CODE, null, null, null, null, null);
+        for (String key : new String[] {null, "", " ", "bad\nkey", "a".repeat(201)}) {
+            assertThatThrownBy(() -> client.createRegistrationGrant(request, key))
+                    .isInstanceOf(PortalOpenApiConfigException.class);
+        }
+        assertThat(server.getRequestCount()).isZero();
+    }
+
+    @Test
+    void registrationInvitationReplayCannotReissueSecretOrMasqueradeAsSuccess() {
+        enqueueToken("grant-write", PortalOpenApiClient.REGISTRATION_GRANTS_WRITE_SCOPE, 120);
+        enqueueJson("{\"grant\":" + grantJson("EMAIL_LINK")
+                + ",\"registrationGrantToken\":\"must-not-leak\",\"registrationAccessCode\":null,\"registrationInvitationUrl\":null,\"secretAlreadyIssued\":true}");
         assertThatThrownBy(() -> client.createRegistrationGrant(new CreateRegistrationGrantRequest(
-                        CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null)))
+                CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null), "same-key"))
+                .isInstanceOf(PortalOpenApiException.class)
+                .hasMessageNotContaining("must-not-leak");
+        assertThat(server.getRequestCount()).isEqualTo(2);
+    }
+
+    @Test
+    void registrationInvitationRejectsMissingDeliveryScalarsAndMalformedUrlWithoutRetry() throws Exception {
+        String id = "019f4cca-88f8-7e77-a67d-4a6a2a68b803";
+        String deliveryId = "019f4cca-88f8-7e77-a67d-4a6a2a68b804";
+        enqueueToken("grant-read", PortalOpenApiClient.REGISTRATION_GRANTS_READ_SCOPE, 120);
+        for (String field : java.util.List.of("attemptCount", "retryable", "recipient", "expiresAt", "status")) {
+            var body = (com.fasterxml.jackson.databind.node.ObjectNode) new ObjectMapper().readTree(deliveryJson(id, deliveryId, "QUEUED"));
+            body.remove(field);
+            enqueueJson(body.toString());
+            assertThatThrownBy(() -> client.getRegistrationGrantDelivery(id, deliveryId))
+                    .isInstanceOf(PortalOpenApiException.class);
+        }
+        assertThat(server.getRequestCount()).isEqualTo(6);
+        assertInvalidCreate("{\"grant\":" + grantJson("EMAIL_LINK")
+                + ",\"registrationGrantToken\":\"fake-token\",\"registrationAccessCode\":null,"
+                + "\"secretAlreadyIssued\":false,\"registrationInvitationUrl\":\"https://[\"}");
+        assertInvalidCreate("{\"grant\":" + grantJson("EMAIL_LINK")
+                + ",\"registrationGrantToken\":\"fake-token\",\"registrationAccessCode\":null,"
+                + "\"secretAlreadyIssued\":null}");
+        assertInvalidCreate("{\"grant\":" + grantJson("EMAIL_LINK").replace("\"version\":0", "\"version\":null")
+                + ",\"registrationGrantToken\":\"fake-token\",\"registrationAccessCode\":null}");
+    }
+
+    private String deliveryJson(String grantId, String deliveryId, String status) {
+        return "{\"id\":\"" + deliveryId + "\",\"grantId\":\"" + grantId
+                + "\",\"recipient\":\"member@example.test\",\"variant\":\"LINK\",\"status\":\"" + status
+                + "\",\"failureCode\":null,\"attemptCount\":0,\"maxAttempts\":3,\"nextAttemptAt\":null,"
+                + "\"retryable\":false,\"expiresAt\":\"2026-11-01T00:00:00Z\",\"createdAt\":\"2026-10-31T00:00:00Z\"}";
+    }
+
+    private void assertInvalidCreate(String response) {
+        JsonNode body;
+        try {
+            body = new ObjectMapper().readTree(response);
+        } catch (java.io.IOException exception) {
+            throw new AssertionError(exception);
+        }
+        var object = (com.fasterxml.jackson.databind.node.ObjectNode) body;
+        if (!object.has("secretAlreadyIssued")) object.put("secretAlreadyIssued", false);
+        if (!object.has("registrationInvitationUrl"))
+            object.put("registrationInvitationUrl", "https://issuer.example.test/invitation?token=fake-token");
+        enqueueToken("grant-write", PortalOpenApiClient.REGISTRATION_GRANTS_WRITE_SCOPE, 120);
+        enqueueJson(object.toString());
+        assertThatThrownBy(() -> client.createRegistrationGrant(new CreateRegistrationGrantRequest(
+                        CreateRegistrationGrantType.EMAIL_LINK, null, null, null, null, null), "r11-create-key"))
                 .isInstanceOf(PortalOpenApiException.class)
                 .satisfies(error -> {
                     PortalOpenApiException portalError = (PortalOpenApiException) error;
@@ -697,7 +798,7 @@ class PortalOpenApiClientTest {
     }
 
     private String grantJson(String type) {
-        return "{\"id\":\"019f4cca-88f8-7e77-a67d-4a6a2a68b803\",\"type\":\"" + type
+        return "{\"id\":\"019f4cca-88f8-7e77-a67d-4a6a2a68b803\",\"version\":0,\"type\":\"" + type
                 + "\",\"status\":\"ACTIVE\",\"displayName\":null,\"allowedEmail\":null,\"allowedDomain\":null,"
                 + "\"expiresAt\":null,\"maxUses\":null,\"usedCount\":0,\"sourceType\":\"API\","
                 + "\"createdAt\":\"2026-07-11T00:00:00Z\",\"updatedAt\":\"2026-07-11T00:00:00Z\","
