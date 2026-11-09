@@ -7,13 +7,14 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.server.resource.BearerTokenErrorCodes;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -31,11 +32,9 @@ import java.util.Set;
 public class IamJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final PermissionResolver resolver;
-    private final IamSecurityProperties props;
 
     public IamJwtAuthenticationConverter(PermissionResolver resolver, IamSecurityProperties props) {
         this.resolver = resolver;
-        this.props = props;
     }
 
     @Override
@@ -67,16 +66,12 @@ public class IamJwtAuthenticationConverter implements Converter<Jwt, AbstractAut
     }
 
     private String resolveAppId(Jwt jwt) {
-        // 优先保留 JWT 里的业务 Application 上下文；缺失时才兜底到配置的 ApplicationClient.clientId。
-        List<String> aud = jwt.getAudience();
-        if (aud != null && !aud.isEmpty()) {
-            return aud.get(0);
-        }
+        // app_id 是 Application 上下文；aud 和 clientId 分别属于资源服务及 OAuth client。
         Object appId = jwt.getClaim("app_id");
         if (appId instanceof String s && !s.isBlank()) {
             return s;
         }
-        return props.getClientId();
+        throw new OAuth2AuthenticationException(BearerTokenErrorCodes.INVALID_TOKEN);
     }
 
     private Set<String> readStringSet(Jwt jwt, String claim) {

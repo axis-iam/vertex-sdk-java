@@ -11,6 +11,7 @@ iam:
   sdk:
     endpoint: ${IAM_ENDPOINT:http://localhost:30001}
     client-id: ${IAM_CLIENT_ID}
+    resource-audience: ${IAM_RESOURCE_AUDIENCE}
     client-secret: ${IAM_CLIENT_SECRET}
     jwks-refresh: PT1H
     permission-cache-ttl: PT5M

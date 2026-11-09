@@ -61,6 +61,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class IamSecurityIntegrationTest {
 
+    private static final String AUDIENCE = "api://integration-resource";
+    private static final String APP_ID = "11111111-1111-4111-8111-111111111111";
     private static MockWebServer server;
     private static RSAKey signingKey;
     private static final AtomicInteger resolveCount = new AtomicInteger(0);
@@ -85,6 +87,7 @@ class IamSecurityIntegrationTest {
                         ObjectNode body = mapper.createObjectNode();
                         ArrayNode arr = body.putArray("permissions");
                         var node = mapper.readTree(req.getBody().readUtf8());
+                        assertThat(node.path("clientId").asText()).isEqualTo("integration-test-app");
                         node.path("roles").forEach(r -> {
                             if ("admin".equals(r.asText())) {
                                 arr.add("posts:read");
@@ -117,6 +120,7 @@ class IamSecurityIntegrationTest {
         registry.add("iam.sdk.endpoint", () -> base);
         registry.add("iam.sdk.client-id", () -> "integration-test-app");
         registry.add("iam.sdk.client-secret", () -> "secret");
+        registry.add("iam.sdk.resource-audience", () -> AUDIENCE);
     }
 
     @Autowired MockMvc mvc;
@@ -165,15 +169,48 @@ class IamSecurityIntegrationTest {
         return issueToken(subject, roles, null, null);
     }
 
+    @Test
+    void rejectsWrongIssuerAndWrongAudienceBeforePermissionResolution() throws Exception {
+        int before = resolveCount.get();
+        mvc.perform(get("/posts").header("Authorization", "Bearer " + issueToken(
+                "alice", Set.of("admin"), null, null, "https://wrong-issuer.invalid", AUDIENCE, APP_ID)))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/posts").header("Authorization", "Bearer " + issueToken(
+                "alice", Set.of("admin"), null, null, issuer(), "integration-test-app", APP_ID)))
+                .andExpect(status().isUnauthorized());
+        assertThat(resolveCount.get()).isEqualTo(before);
+    }
+
+    @Test
+    void rejectsMissingAndBlankAppIdEvenWithoutRoles() throws Exception {
+        int before = resolveCount.get();
+        for (String appId : new String[]{null, "   "}) {
+            mvc.perform(get("/posts").header("Authorization", "Bearer " + issueToken(
+                    "alice", Set.of(), null, null, issuer(), AUDIENCE, appId)))
+                    .andExpect(status().isUnauthorized());
+        }
+        assertThat(resolveCount.get()).isEqualTo(before);
+    }
+
+    private static String issuer() {
+        return server.url("/").toString().replaceAll("/+$", "");
+    }
+
     private static String issueToken(String subject, Set<String> roles, String acr, String actorSubject) throws Exception {
+        return issueToken(subject, roles, acr, actorSubject, issuer(), AUDIENCE, APP_ID);
+    }
+
+    private static String issueToken(String subject, Set<String> roles, String acr, String actorSubject,
+                                     String issuer, String audience, String appId) throws Exception {
         JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
                 .keyID(signingKey.getKeyID())
                 .type(JOSEObjectType.JWT)
                 .build();
         JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
                 .subject(subject)
-                .audience("integration-test-app")
-                .issuer(server.url("/").toString().replaceAll("/+$", ""))
+                .audience(audience)
+                .issuer(issuer)
+                .claim("app_id", appId)
                 .claim("roles", List.copyOf(new LinkedHashSet<>(roles)))
                 .issueTime(Date.from(Instant.now()))
                 .expirationTime(Date.from(Instant.now().plusSeconds(600)));

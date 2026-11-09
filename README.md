@@ -16,6 +16,7 @@ Create one business Application for your product, then create the ApplicationCli
 - Spring Boot resource servers use a confidential server client. Explicit manifest CI/deployment commands use an M2M client whose persisted allowlist contains `permissions:sync` and request only that exact scope.
 - If a Java WEB application implements interactive browser login itself, its authorization-code flow must use both the WEB client secret and S256 PKCE (`code_challenge_method=S256` plus matching `code_verifier`). This Java SDK does not implement a browser login/callback helper; it verifies bearer tokens, resolves permissions, and performs server-side IAM calls.
 - `iam.sdk.client-id` is `ApplicationClient.clientId`.
+- `iam.sdk.resource-audience` is `Application.resourceAudience` from the Application SDK Config; it is required for the SDK-owned JWT decoder and is never inferred from `client-id`.
 - `iam.sdk.client-secret` is the secret for that WEB/M2M confidential ApplicationClient.
 - `applicationId` is derived server-side from verified IAM tokens, for example token `app_id`, and is not a public signup/SMS/passwordless configuration value. Public end-user auth context uses OAuth `client_id`.
 
@@ -40,6 +41,7 @@ iam:
   sdk:
     endpoint: https://iam.example.com
     client-id: iam_web_or_m2m_client_id
+    resource-audience: api://your-business-api
     client-secret: ${IAM_CLIENT_SECRET}
     permission-cache-ttl: PT5M
     user-profile-cache-ttl: PT1M
@@ -54,6 +56,13 @@ The SDK derives:
 - runtime permission resolve: `POST https://iam.example.com/open/v1/permissions:resolve`
 
 Use Axis Vertex access tokens issued to your React SPA or other connected application. Do not configure this backend with the SPA public client; the Spring Boot API uses its own `WEB` or `M2M` confidential ApplicationClient under the same business Application.
+
+Copy `resourceAudience` from the Application SDK Config into `iam.sdk.resource-audience`.
+The SDK-owned decoder accepts only ES256/RS256 signatures from JWKS, checks the normalized endpoint
+as issuer, requires the configured resource audience in `aud`, and preserves Spring Security's default
+expiration/not-before checks. Existing endpoint configurations must add this explicit property;
+missing or blank values fail at startup. Custom `JwtDecoder` beans still override SDK decoder creation
+and own their verification policy; custom `PermissionResolver` beans remain supported.
 
 ### 3. Enable and use
 
@@ -127,7 +136,7 @@ See the runnable paired Spring Boot runbook in [`examples/spring-boot-demo/`](./
 
 ## Runtime Contract
 
-JWT access tokens carry identity and roles, not final permissions. `IamJwtAuthenticationConverter` reads `roles` plus `aud`/`app_id`, calls `POST /open/v1/permissions:resolve` for the configured ApplicationClient, caches the resolved permission set locally, and adds each permission as a Spring Security authority.
+JWT access tokens carry identity and roles, not final permissions. `IamJwtAuthenticationConverter` uses only a nonblank string `app_id` as Application context and rejects authentication if it is missing, blank, or malformed, even without roles. It never falls back to `aud` or `client-id`. `aud` identifies the resource audience, while `app_id` is the internal Application UUID. The resolver receives `app_id` and `roles`; the default `HttpPermissionResolver` calls `POST /open/v1/permissions:resolve` with the configured ApplicationClient `clientId`, caches the resolved permission set locally, and adds each permission as a Spring Security authority.
 
 Permission publication is explicit and server-only. CI/deployment uses the structured manifest client or Gradle upload
 task with an exact `permissions:sync` token; runtime startup never mutates permission state.
@@ -281,6 +290,7 @@ Do not use the IAM Developer Portal registration endpoint from SDK code. `POST /
 | --- | --- | --- |
 | `iam.sdk.endpoint` | none | IAM server base URL. Enables network-backed SDK beans. |
 | `iam.sdk.client-id` | none | `ApplicationClient.clientId` for a WEB/M2M confidential client used by this backend. |
+| `iam.sdk.resource-audience` | none | Application SDK Config `resourceAudience`; required when the SDK creates the network JWT decoder. Validates access-token `aud`, independently of `client-id`. |
 | `iam.sdk.client-secret` | none | Secret for the confidential server client; never sent to Portal. |
 | `iam.sdk.permission-cache-ttl` | `PT5M` | Local role-set permission cache TTL. |
 | `iam.sdk.permission-cache-max-size` | `10000` | Max Caffeine cache entries. |

@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "iam.sdk.endpoint=http://localhost:1",
         "iam.sdk.client-id=demo-app",
+        "iam.sdk.resource-audience=api://demo-resource",
         "iam.sdk.client-secret=secret",
 })
 @AutoConfigureMockMvc

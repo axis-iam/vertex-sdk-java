@@ -124,7 +124,7 @@ public final class IamContext {
         }
         return new IamCurrentUser(
                 jwt.getSubject(),
-                applicationId(jwt),
+                stringClaim(jwt, "app_id"),
                 stringClaim(jwt, "email"),
                 Boolean.TRUE.equals(jwt.getClaim("email_verified")),
                 stringClaim(jwt, "username"),
@@ -147,15 +147,6 @@ public final class IamContext {
         }
         Object principal = authentication.getPrincipal();
         return principal instanceof Jwt jwt ? jwt : null;
-    }
-
-    private static String applicationId(Jwt jwt) {
-        String appId = stringClaim(jwt, "app_id");
-        if (appId != null) {
-            return appId;
-        }
-        List<String> audience = jwt.getAudience();
-        return audience == null || audience.isEmpty() ? null : audience.get(0);
     }
 
     private static String stringClaim(Jwt jwt, String name) {

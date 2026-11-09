@@ -15,6 +15,9 @@ public class IamSecurityProperties {
     /** 当前服务端接入使用的 {@code ApplicationClient.clientId}，应来自 WEB/M2M confidential client。 */
     private String clientId;
 
+    /** Application.resourceAudience，用于校验 access token 的 aud；不等于 ApplicationClient.clientId。 */
+    private String resourceAudience;
+
     /** WEB/M2M confidential ApplicationClient 的 secret；权限同步和内部管理调用必须配置。 */
     private String clientSecret;
 
@@ -47,6 +50,9 @@ public class IamSecurityProperties {
 
     public String getClientId() { return clientId; }
     public void setClientId(String clientId) { this.clientId = clientId; }
+
+    public String getResourceAudience() { return resourceAudience; }
+    public void setResourceAudience(String resourceAudience) { this.resourceAudience = resourceAudience; }
 
     public String getClientSecret() { return clientSecret; }
     public void setClientSecret(String clientSecret) { this.clientSecret = clientSecret; }

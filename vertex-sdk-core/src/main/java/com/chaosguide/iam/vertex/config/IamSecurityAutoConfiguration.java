@@ -18,8 +18,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -59,13 +65,24 @@ public class IamSecurityAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "iam.sdk", name = "endpoint")
     public JwtDecoder iamJwtDecoder(IamSecurityProperties props) {
+        String audience = props.getResourceAudience();
+        if (audience == null || audience.isBlank()) {
+            throw new IllegalArgumentException("iam.sdk.resource-audience must be configured for the SDK JwtDecoder");
+        }
         // Spring Security 的 NimbusJwtDecoder 已内置 JWKS 拉取与缓存；SDK 不再重复实现 JwtVerifier。
-        return NimbusJwtDecoder.withJwkSetUri(props.getJwksUrl())
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(props.getJwksUrl())
                 .jwsAlgorithms(algorithms -> {
                     algorithms.add(SignatureAlgorithm.ES256);
                     algorithms.add(SignatureAlgorithm.RS256);
                 })
                 .build();
+        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> jwt.getAudience() != null && jwt.getAudience().contains(audience)
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                        "invalid_token", "The required resource audience is missing", null));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(props.getIssuerUri()), audienceValidator));
+        return decoder;
     }
 
     @Bean

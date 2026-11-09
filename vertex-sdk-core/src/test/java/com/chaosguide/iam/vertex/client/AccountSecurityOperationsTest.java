@@ -382,7 +382,8 @@ class AccountSecurityOperationsTest {
                 .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations.of(
                     com.chaosguide.iam.vertex.config.IamSecurityAutoConfiguration.class))
                 .withPropertyValues("iam.sdk.endpoint=" + server.url("/"),
-                    "iam.sdk.client-id=client", "iam.sdk.client-secret=secret")
+                    "iam.sdk.client-id=client", "iam.sdk.client-secret=secret",
+                    "iam.sdk.resource-audience=api://account-security-test")
                 .run(context
                     -> assertThat(context.getBean(IamClient.class)
                                       .getMfaCapabilities("current-user")

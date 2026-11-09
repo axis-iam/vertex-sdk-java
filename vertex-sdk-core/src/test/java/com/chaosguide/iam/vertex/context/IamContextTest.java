@@ -78,6 +78,21 @@ class IamContextTest {
     }
 
     @Test
+    void applicationContextNeverFallsBackToResourceAudience() {
+        for (Object appId : new Object[]{null, "", "   ", 42, List.of("app-1")}) {
+            Jwt.Builder builder = Jwt.withTokenValue("fixture-token")
+                    .header("alg", "RS256").subject("user-1")
+                    .audience(List.of("api://resource-one", "api://resource-two"));
+            if (appId != null) {
+                builder.claim("app_id", appId);
+            }
+            SecurityContextHolder.getContext().setAuthentication(
+                    new JwtAuthenticationToken(builder.build(), List.of()));
+            assertThat(IamContext.requireCurrentUser().applicationId()).isNull();
+        }
+    }
+
+    @Test
     void consumesSharedWildcardVectors() throws Exception {
         var fixture = sharedManifestVectors();
         for (var vector : fixture.path("codeGeneration").path("wildcardMatch")) {

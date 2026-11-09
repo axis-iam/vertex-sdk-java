@@ -33,7 +33,7 @@ class IamMockWebServerTest {
     }
 
     @Test
-    void issuedTokenContainsSubjectRolesAndIssuer(IamMockWebServer iam) throws ParseException {
+    void issuedTokenContainsSubjectRolesIssuerAndIndependentAppId(IamMockWebServer iam) throws ParseException {
         String token = iam.issueToken("alice", Set.of("admin", "editor"));
 
         SignedJWT jwt = SignedJWT.parse(token);
@@ -42,6 +42,8 @@ class IamMockWebServerTest {
         assertThat(claims.getSubject()).isEqualTo("alice");
         assertThat(claims.getAudience()).containsExactly("test-client");
         assertThat(claims.getIssuer()).isEqualTo(iam.baseUrl());
+        assertThat(claims.getStringClaim("app_id")).isEqualTo("11111111-1111-4111-8111-111111111111")
+                .isNotEqualTo(claims.getAudience().get(0));
         assertThat(claims.getStringListClaim("roles"))
                 .containsExactlyInAnyOrder("admin", "editor");
         assertThat(jwt.getHeader().getKeyID()).isEqualTo("test-kid-1");

@@ -56,6 +56,7 @@ Set:
 
 - `IAM_ENDPOINT` to the IAM issuer/API root, default `http://localhost:30001`.
 - `IAM_CLIENT_ID` to the `WEB` or `M2M` confidential `ApplicationClient.clientId`.
+- `IAM_RESOURCE_AUDIENCE` to the Application SDK Config `resourceAudience`; this is the access-token `aud`, independent of the client ID and internal `app_id`.
 - `IAM_CLIENT_SECRET` to that confidential client's one-time secret.
 
 The `.env` file is loaded locally by Spring Boot through `spring.config.import`; real values must stay untracked.
@@ -149,8 +150,8 @@ The script writes a redacted report under `%TEMP%\phase1-live-paired-example-e2e
 ## How It Works
 
 1. `@EnableIamSecurity` imports the SDK auto-configuration.
-2. `NimbusJwtDecoder` reads JWKS from `{IAM_ENDPOINT}/oauth2/jwks` and verifies incoming bearer JWTs.
-3. `IamJwtAuthenticationConverter` extracts identity and roles from the JWT, then calls `POST /open/v1/permissions:resolve` to fetch permissions.
+2. `NimbusJwtDecoder` reads JWKS from `{IAM_ENDPOINT}/oauth2/jwks` and checks signature/allowed algorithm, issuer, `IAM_RESOURCE_AUDIENCE`, and token lifetime. Startup requires an explicit nonblank resource audience.
+3. `IamJwtAuthenticationConverter` requires a nonblank `app_id` for Application context and extracts roles from the JWT, then calls `POST /open/v1/permissions:resolve` using the configured confidential client ID to fetch permissions.
 4. `@RequirePerm` enforces `posts:read` on `GET /posts` and `posts:write` on `POST /posts`.
 5. Permission publication is an explicit CI/deployment operation through the structured manifest client or
    `iamUploadPermissions`; the runnable server never mutates permission state at startup.

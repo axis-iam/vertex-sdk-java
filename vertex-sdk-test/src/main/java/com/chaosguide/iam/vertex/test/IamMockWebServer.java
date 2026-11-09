@@ -110,7 +110,7 @@ public class IamMockWebServer implements BeforeEachCallback, AfterEachCallback, 
 
     public String issueToken(String subject, Set<String> roles, String audience, long ttlSeconds) {
         try {
-            // 测试 token 和真实 IAM token 保持相同的核心契约：sub/aud/issuer/roles，不包含 permissions。
+            // aud 是资源 audience，app_id 使用独立的固定测试 Application UUID；不包含 permissions。
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
                     .keyID(signingKey.getKeyID())
                     .type(JOSEObjectType.JWT)
@@ -119,6 +119,7 @@ public class IamMockWebServer implements BeforeEachCallback, AfterEachCallback, 
                     .subject(subject)
                     .audience(audience)
                     .issuer(baseUrl())
+                    .claim("app_id", "11111111-1111-4111-8111-111111111111")
                     .claim("roles", List.copyOf(roles))
                     .issueTime(Date.from(Instant.now()))
                     .expirationTime(Date.from(Instant.now().plusSeconds(ttlSeconds)))
