@@ -14,7 +14,7 @@ Create one business Application for your product, then create the ApplicationCli
 
 - Browser/native frontends use `SPA`/`NATIVE` public clients. They have no secret and must not be used by this Java server SDK.
 - Spring Boot resource servers use a confidential server client. Explicit manifest CI/deployment commands use an M2M client whose persisted allowlist contains `permissions:sync` and request only that exact scope.
-- If a Java WEB application implements interactive browser login itself, its authorization-code flow must use both the WEB client secret and S256 PKCE (`code_challenge_method=S256` plus matching `code_verifier`). This Java SDK does not implement a browser login/callback helper; it verifies bearer tokens, resolves permissions, and performs server-side IAM calls.
+- Interactive Java WEB applications can explicitly add the optional `vertex-sdk-web` module for Hosted or custom login, S256 PKCE, OIDC and server sessions. See [the module guide](vertex-sdk-web/README.md) for the local candidate and supported integration. The core Bearer integration remains independent.
 - `iam.sdk.client-id` is `ApplicationClient.clientId`.
 - `iam.sdk.resource-audience` is `Application.resourceAudience` from the Application SDK Config; it is required for the SDK-owned JWT decoder and is never inferred from `client-id`.
 - `iam.sdk.client-secret` is the secret for that WEB/M2M confidential ApplicationClient.
@@ -345,8 +345,8 @@ request-local JWT verification. HTTP 401/403/dependency failures propagate as
 errors; no anonymous or empty-user success is synthesized.
 
 The existing profile methods continue to read `/api/v1/auth/me/profile`; use the
-new current-user method for the explicit safe authentication context. No unified
-BFF/transaction transport or new machine authorization API is implied.
+new current-user method for the explicit safe authentication context. The optional
+Web module composes the separate server-session/transaction integration.
 
 Current-account logout revokes the authenticated OAuth token/session using only the Access Token. No Direct refresh-token body or Direct login/refresh fallback is supported.
 

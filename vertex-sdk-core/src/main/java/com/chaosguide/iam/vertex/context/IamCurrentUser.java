@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Request-local authenticated user derived from the verified JWT and resolved
- * Spring Security authorities.
+ * Request-local authenticated user from verified JWT claims or an online validated
+ * server session, with authoritative Spring Security permissions.
  */
 public record IamCurrentUser(
         String subject,
@@ -51,7 +51,8 @@ public record IamCurrentUser(
 
     public boolean hasMfa() {
         return authenticationMethods.stream()
-                .anyMatch(v -> "mfa".equals(v) || "totp".equals(v) || "webauthn".equals(v) || "pwd+mfa".equals(v));
+                .anyMatch(v -> "mfa".equalsIgnoreCase(v) || "totp".equalsIgnoreCase(v)
+                        || "webauthn".equalsIgnoreCase(v) || "pwd+mfa".equalsIgnoreCase(v));
     }
 
     public boolean hasPermission(PermissionKey permission) {

@@ -29,7 +29,7 @@ public final class IamContext {
                 .orElseThrow(() -> new IamSdkException("current IAM user is not available"));
     }
 
-    /** Returns the current IAM context if the Spring Security context contains a JWT authentication. */
+    /** Returns the current IAM context from a verified JWT or an authenticated server-session principal. */
     public static Optional<IamContext> currentOptional() {
         return currentUserOptional().map(IamContext::new);
     }
@@ -45,6 +45,9 @@ public final class IamContext {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return Optional.empty();
+        }
+        if (authentication.getPrincipal() instanceof IamCurrentUser user) {
+            return Optional.of(user);
         }
         Jwt jwt = jwt(authentication);
         if (jwt == null) {

@@ -1,0 +1,12 @@
+{
+  "name": "vertex-java-bff-browser-example",
+  "private": true,
+  "type": "module",
+  "scripts": {"build": "node build.mjs", "verify": "node verify.mjs"},
+  "dependencies": {
+    "@axis-iam/vertex": "file:vendor/axis-iam-vertex-0.1.0.tgz",
+    "@axis-iam/vertex-react": "file:vendor/axis-iam-vertex-react-0.1.0.tgz",
+    "react": "19.2.0", "react-dom": "19.2.0"
+  },
+  "devDependencies": {"esbuild": "0.25.12", "playwright": "1.58.2"}
+}

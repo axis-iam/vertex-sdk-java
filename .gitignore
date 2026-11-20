@@ -25,6 +25,9 @@ Thumbs.db
 
 # Maven publishing artifacts
 target/
+/.bft/
+/examples/bff-spring/browser/node_modules/
+/examples/bff-spring/src/main/resources/static/bff-app.js
 
 # Local agent and coordination material (kept on disk, excluded from public source)
 /.private-history/

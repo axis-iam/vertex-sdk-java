@@ -3,6 +3,7 @@ package com.chaosguide.iam.vertex.context;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -75,6 +76,20 @@ class IamContextTest {
     void currentReturnsEmptyWhenNoJwtAuthentication() {
         assertThat(IamContext.currentOptional()).isEmpty();
         assertThat(IamContext.currentAccessToken()).isEmpty();
+    }
+
+    @Test
+    void authenticatedServerSessionPrincipalIsLocalAndNeverExposesAnAccessToken() {
+        IamCurrentUser user=new IamCurrentUser("user","app",null,false,null,null,null,null,null,"session",
+                Set.of("reader"),Set.of("documents:read"),List.of("PASSWORD","TOTP"),"urn:iam:acr:mfa",null,Map.of());
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(user,null,List.of(new SimpleGrantedAuthority("documents:read"))));
+        assertThat(IamContext.currentUser()).isSameAs(user);
+        assertThat(IamContext.current().hasPermission("documents","read")).isTrue();
+        assertThat(IamContext.currentUser().hasMfa()).isTrue();
+        assertThat(IamContext.currentAccessToken()).isEmpty();
+        SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.unauthenticated(user,null));
+        assertThat(IamContext.currentUserOptional()).isEmpty();
     }
 
     @Test
