@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
   workflow_dispatch:
 
@@ -23,6 +23,7 @@ jobs:
         run: >-
           bash ./gradlew --no-daemon
           :vertex-sdk-core:test
+          :vertex-sdk-web:test
           :vertex-gradle-plugin:test
           :vertex-sdk-test:test
           :vertex-gradle-plugin:validatePlugins
